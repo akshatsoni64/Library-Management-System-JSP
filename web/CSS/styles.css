@@ -1,0 +1,22 @@
+.cont-left
+{
+    float:left;
+    width:20%;
+	
+}
+.cont-right
+{
+    float:right;
+    width:75%;
+    margin-right:5%;
+}
+
+.open-candidate, .open-book, .open-issue, .open-fine, .open-return, .log-out
+{
+    border-radius:30px;
+}
+
+.log-out
+{
+    margin-top:2%;
+}
