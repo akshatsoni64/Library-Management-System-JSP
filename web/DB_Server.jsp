@@ -1,6 +1,4 @@
 <%@page import="java.sql.*"%>
-<%@page import="java.util.*"%>
-
 <%
     //Database
     Connection con=null; 
@@ -9,15 +7,14 @@
     ResultSet rs=null;
     String sqlQuery=null;
     
-    Class.forName("com.mysql.jdbc.Driver");
-    
     try
     {
+        Class.forName("com.mysql.jdbc.Driver");
         con=DriverManager.getConnection("jdbc:mysql://localhost:3306/libmgmt","root","");         
         stmt=con.createStatement();
     }
     catch(Exception e)
     {
-        //out.println("Exception: "+e.toString());
+        out.println("<script>console.log('Exception: "+e.toString()+"');</script>");
     }
 %>

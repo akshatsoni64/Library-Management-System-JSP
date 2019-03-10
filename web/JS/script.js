@@ -3,7 +3,7 @@ $(document).ready(function()
     //Event Handler to register new candidate 
     $("#submit-register").on('submit',function(event){		
         event.preventDefault();
-        alert("Registering..."); 
+        //alert("Registering...");
         
         var ctype = $("input[name='ctype']:checked").val();
         var username=$("#username").val();
@@ -14,19 +14,16 @@ $(document).ready(function()
         $.ajax({
             url:"server.jsp",
             method:"post",
-            contentType: false,       
-            cache: false,            
-            processData:false,   
             data: {submit:"submit-register",ctype:ctype,username:username,password:password,deptid:deptid,cname:cname},
             success:function(data){
                 if(($.trim(data))==="Registered")
                 {
-                    $(location).attr('href',"/Library-Management-System-JSP/index.jsp");                    
+                    $(location).attr('href',"index.jsp");
                 }
                 else
                 {
                     alert("Registration Error: "+data);
-                    $(location).attr('href',"/Library-Management-System-JSP/register.jsp");
+                    $(location).attr('href',"register.jsp");
                 }
             }
         });
@@ -45,9 +42,7 @@ $(document).ready(function()
     //Event Handler to login
     $("#submit-login").on('submit',function(event){
         event.preventDefault();
-
-        console.log("Submitting...");
-
+        //console.log("Submitting...");
 
         var uname=$("#username").val();
         var pwd=$("#pswd").val();
@@ -60,12 +55,12 @@ $(document).ready(function()
                 var d="Logged In Successfully";
                 if(($.trim(data))===d)
                 {                
-                    $(location).attr('href',"/Library-Management-System-JSP/index.jsp");
+                    $(location).attr('href',"index.jsp");
                 }
                 else
                 {
                     alert("Login Error!"+data);
-                    $(location).attr('href',"/Library-Management-System-JSP/login.jsp");
+                    $(location).attr('href',"login.jsp");
                 }
             }      
         });
@@ -79,7 +74,7 @@ $(document).ready(function()
             data:{submit:"submit-logout"},
             success:function(){
                 alert("Logged Out Successfully!");
-                $(location).attr('href',"/Library-Management-System-JSP/login.jsp");
+                $(location).attr('href',"login.jsp");
            }
         });        
     });
@@ -89,7 +84,7 @@ $(document).ready(function()
         $(location).attr('href',"register.jsp");
     });    
 
-    //Event Handler to retrieve the data select in the combobox at top left
+    //Event Handler to retrieve the data select in the combobox(category) at top left
     $(".category").on('change',function(){
         var category=this.value;
         var submit="submit-category";
@@ -102,44 +97,26 @@ $(document).ready(function()
             }
         });
     });
-    
-     //Event handler to load the name of book after filtering according to the value entered   
-    $("#bookname").keyup(function(){
-        var val=$("#bookname").val();
-        $.ajax({
-            url:"server.jsp",
-            data: {val:val},
-            success:function(data){
-                $("#booklist").html(data);
-            }
-        });
-    });
-
-    //Event Handler to load all the booknames
-    $("#bookname").click(function(){
-        var table="books";
-        $.ajax({
-            url:"server.jsp",
-            data: {table:table},
-            success:function(data){
-                $("#booklist").html(data);
-            }
-        });
-    });
 
     //Event handler to add new books in library
     $("#submit-book").on('submit',function(event){
         event.preventDefault();
 
-        var formdata=new FormData(this);
-        formdata.append("submit","submit-book");
+        /*var formdata=new FormData(this);
+        formdata.append("submit","submit-book");*/
+        //alert("Adding Books..");
+
+        var bookname=$("#bookname_book").val();
+        var author=$("#author").val();
+        var quantity=$("#quantity").val();
 
         $.ajax({
             url:"server.jsp",
-            contentType: false,       
-            cache: false,            
-            processData:false,   
-            data: formdata,
+            method:"post",
+            /*contentType: false,
+            cache: false,
+            processData:false,*/
+            data: {submit:"submit-book",bookname:bookname,author:author,quantity:quantity},
             success:function(data){
                 alert("Books Added Successfully");
                 $("#book").modal("hide");
@@ -148,14 +125,49 @@ $(document).ready(function()
                     .trigger('change');
             }
         });
-    });	
+    });
 
-    //Event Handler to get the available quantities of book
+    //Book Related Events (Issue)
+    $("#bookname_issue").on({
+        //Event Handlers to load all the booknames
+        click:function()
+        {
+            $.ajax({
+                url:"server.jsp",
+                method:"post",
+                data: {submit:"get_books",table:"books"},
+                success:function(data){
+                    $("#booklist").html(data);
+                }
+            });
+        },
+        //Event handler to load the name of book after filtering according to the value entered
+        keyup:function(){
+            var val=$("#bookname_issue").val();
+            $.ajax({
+                url:"server.jsp",
+                method:"post",
+                data: {submit:"get_filtered_books",val:val},
+                success:function(data){
+                    $("#booklist").html(data);
+                }
+            });
+        },
+        //Same as Click Event
+        focus:function(){
+            $("#bookname_issue")
+                .trigger('click')
+                .off("focus");
+        }
+    });
+
+    //Event Handler to get the available quantities of book(Issue)
     $("#QButton").click(function(){
-        var bkname=$("#bookname").val();
+        var bkname=$("#bookname_issue").val();
         $.ajax({
             url:"server.jsp",
-            data:{bkname:bkname},
+            method:"post",
+            data:{submit:"get_quantity",bkname:bkname},
             success:function(data){
                 $("#QLabel").html(data);
             }
@@ -170,32 +182,34 @@ $(document).ready(function()
         formdata.append("submit","submit-issue");
 
         var quantity=parseInt($("#QLabel").val());
-        var oid=$("#ownerid").val();
-        var oidtype=$("#ownerid").val();
+        var oid=$("#ownerid_issue").val();
+
         var count,otype,limit;
         $.ajax({
             url:"server.jsp",
-            data:{oid:oid},
+            method:"post",
+            data:{submit:"get_oid",oid:oid},
             success:function(data){
                 count=data;
                 //console.log(data);
             }
         }); //count the transactions of issuing the book
-
+        var otype="",count=0;
         $.ajax({
             url:"server.jsp",
-            data:{oidtype:oidtype},
+            method:"post",
+            data:{submit:"get_oType",oid:oid},
             success:function(data){
-                otype=data;
-                //console.log(data);
+                otype=$.trim(data);
+                console.log(data);
             }
         }); //get the limit of issuing the book according to the type of candidate
 
-        if(otype.equals("Student"))
+        if(otype==="Student")
         {
             limit=4;
         }
-        else if(otype.equals("Teacher"))
+        else if(otype==="Teacher")
         {
             limit=7;
         } //assign the limits according to the type of owner
@@ -211,15 +225,18 @@ $(document).ready(function()
             }
             else
             {
-                var owner=$("#ownerid").val();								
-                if(owner[0].equals('T') || owner[0].equals('S'))//Validate the Owner ID
+                var owner=$("#ownerid_issue").val();
+                var bookname=$("#bookname_issue").val();
+                $("bookname_issue").val();
+                if(owner[0]==='T' || owner[0]==='S')//Validate the Owner ID
                 {
                     $.ajax({
                         url:"server.jsp",
-                        contentType: false,       
+                        method:"post",
+                        /*contentType: false,
                         cache: false,            
-                        processData:false,   
-                        data: formdata,
+                        processData:false, */
+                        data: {submit:"submit-issue",owner:owner,bookname:bookname},
                         success:function(data){
                             alert("Book Issued Successfully, Please Try to return within 7days of issuing to avoid fines");
                             $("#issue").modal("hide");
@@ -241,15 +258,13 @@ $(document).ready(function()
     $("#submit-return").on('submit',function(event){
         event.preventDefault();
 
-        var formdata=new FormData(this);
-        formdata.append("submit","submit-return");
+        var ownerid_return=$("#ownerid_return").val();
+        var bookid_return=$("#bookid_return").val();
 
         $.ajax({
             url:"server.jsp",
-            contentType: false,       
-            cache: false,            
-            processData:false,   
-            data: formdata,
+            method:"post",
+            data: {submit:"submit-return",ownerid_return:ownerid_return,bookid_return:bookid_return},
             success:function(data){
                 alert(data);
                 //alert("Book Returned");
@@ -262,12 +277,13 @@ $(document).ready(function()
     });
 
     $("#FButton").click(function(){
-        var FINEoid=$("#ownerId").val();
-        var FINEbkid=$("#bookid").val();
 
+        var FINEoid=$("#ownerid_fine").val();
+        var FINEbkid=$("#bookid_fine").val();
         $.ajax({
             url:"server.jsp",
-            data:{FINEoid:FINEoid,FINEbkid:FINEbkid},
+            method:"post",
+            data:{submit:"submit_get_fine",FINEoid:FINEoid,FINEbkid:FINEbkid},
             success:function(data){
                 $("#FLabel").html(data);
             }
@@ -277,15 +293,13 @@ $(document).ready(function()
     $("#submit-fine").on('submit',function(event){
         event.preventDefault();
 
-        var formdata=new FormData(this);
-        formdata.append("submit","submit-fine");
+        var ownerid_fine=$("#ownerid_fine").val();
+        var bookid_fine=$("#bookid_fine").val();
 
         $.ajax({
             url:"server.jsp",
-            contentType: false,       
-            cache: false,            
-            processData:false,   
-            data: formdata,
+            method:"post",
+            data: {submit:"submit-fine",ownerid_fine:ownerid_fine,bookid_fine:bookid_fine},
             success:function(data){
                 alert("Fine Collected, Thank You");
                 $("#fine").modal("hide");

@@ -1,5 +1,4 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
-<%@page import="java.sql.*"%>
 <%@include file="server.jsp"%>
 <%
     //Session Check   
@@ -10,7 +9,7 @@
 %>
 
 <html>
-    <head>        
+    <head>
         <title>Library Management System</title>
         <link rel="icon" type="images/x-icon" href="PICS/logo.png">
         <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
