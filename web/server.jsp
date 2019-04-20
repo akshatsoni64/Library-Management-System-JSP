@@ -1,6 +1,6 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@page import="java.util.*" %>
-<%@ page import="java.text.*" %>
+<%@page import="com.google.gson.Gson"%>
 <%@include file="DB_Server.jsp"%>
 
 <%
@@ -23,10 +23,15 @@
                 sqlQuery = "select * from user where username='" + un + "' AND password='" + pwd + "'";
                 //out.println("<script>console.log('"+sqlQuery+"');</script>");
                 rs = stmt.executeQuery(sqlQuery);
-                while (rs.next()) {
-                    session_lms.setAttribute("username", rs.getString("username"));
-                    out.println("Logged In Successfully");
-                }
+                rs.next();
+                sqlQuery="select ctype from candidate where cid='"+rs.getString("cid")+"'";
+                //out.println("<script>console.log('"+sqlQuery+"');</script>");
+                session_lms.setAttribute("username", rs.getString("username"));
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                session_lms.setAttribute("usertype", rs.getString("ctype"));
+                out.println("Logged In Successfully");
+
             } catch (Exception e) {
                 out.println("Error in login " + e.toString());
             }
@@ -35,6 +40,7 @@
         //Logout
         if (action.equals("submit-logout")) {
             session_lms.setAttribute("username", null);
+            session_lms.setAttribute("usertype", null);
         }
 
         //Register
@@ -64,7 +70,7 @@
                     //out.println("<script>console.log('"+p+" and "+q+"');</script>");
                 }
                 else if (ctype.equals("Teacher")) {
-                    rs = stmt.executeQuery("select * from candidate where ctype='Student'");
+                    rs = stmt.executeQuery("select * from candidate where ctype='Teacher'");
                     while (rs.next()) {
                         c_row++;
                     }
@@ -79,7 +85,7 @@
                     //out.println("<script>console.log('"+p+" and "+q+"');</script>");
                 }
                 out.println("Registered");
-                session_lms.setAttribute("username", username);
+                //session_lms.setAttribute("username", username);
             } catch (Exception e) {
                 out.println("Error in register " + e.toString());
             }
@@ -89,32 +95,59 @@
         if (action.equals("submit-category")) {
             String table = request.getParameter("category");
             ArrayList<String> colname = new ArrayList<String>();
+            String cols=null,condition=null;
             if (table.equals("candidate")) {
                 colname.add("cid");
                 colname.add("cname");
                 colname.add("ctype");
                 colname.add("deptid");
+                cols="cid,cname,ctype,deptid";
+                condition="";
             } else if (table.equals("books")) {
                 colname.add("bookid");
                 colname.add("bookname");
                 colname.add("author");
+                cols="bookid,bookname,author";
+                condition="";
             } else if (table.equals("department")) {
                 colname.add("deptid");
                 colname.add("dname");
+                cols="deptid,dname";
+                condition="";
             } else if (table.equals("issue")) {
-                colname.add("tid");
+                //colname.add("tid");
                 colname.add("bookid");
-                colname.add("ownerid");
+                //colname.add("ownerid");
                 colname.add("issue_date");
                 colname.add("return_date");
+                cols="bookid,ownerid,issue_date,return_date";
+                try {
+                    sqlQuery = "select cid from user where username='" + session_lms.getAttribute("username") + "'";
+                    rs = stmt.executeQuery(sqlQuery);
+                    rs.next();
+                    String uid = rs.getString("cid");
+                    condition = " where ownerid='" + uid + "'";
+                }catch(Exception e){
+                    out.println("Exception in issue data: "+e.toString());
+                }
             } else if (table.equals("fine")) {
-                colname.add("tid");
+                colname.add("bookid");
                 colname.add("fine_amount");
                 colname.add("paid");
+                cols="tid,fine_amount,paid";
+                try {
+                    sqlQuery = "select cid from user where username='" + session_lms.getAttribute("username") + "'";
+                    rs = stmt.executeQuery(sqlQuery);
+                    rs.next();
+                    String uid = rs.getString("cid");
+                    condition = " where ownerid='" + uid  + "'";
+                }catch(Exception e){
+                    out.println("Exception in issue data: "+e.toString());
+                }
             }
-
+            String tbname=table;
             try {
-                sqlQuery = "select * from " + table;
+                sqlQuery = "select " + cols + " from " + table + condition;
                 rs = stmt.executeQuery(sqlQuery);
                 table = "<table class='w3-table-all'><thead><tr>";
                 for (String col : colname) {
@@ -122,15 +155,27 @@
                 }
                 table += "</tr></thead><tbody>";
 
+                if (tbname.equals("fine")) {
+                    colname.remove(0);
+                }
                 while (rs.next()) {
                     table += "<tr>";
+                    if (tbname.equals("fine")) {
+                        sqlQuery="select bookid from issue where tid='"+rs.getString("tid")+"'";
+                        Statement stbk=con.createStatement();
+                        ResultSet r=stbk.executeQuery(sqlQuery);
+                        r.next();
+                        table += "<td>" + r.getString("bookid") + "</td>";
+                        r.close();
+                    }
                     for (String col : colname) {
                         table += "<td>" + rs.getString(col) + "</td>";
                     }
                     table += "</tr>";
                 }
                 table += "</tbody></table>";
-            } catch (Exception e) {
+            }
+            catch(Exception e) {
                 out.println(e.toString());
             }
             out.println(table);
@@ -238,45 +283,44 @@
                 }
             }
             catch (Exception e) {
-                out.println("Error in counting the copies"+e.toString());
-            }
-        }
-
-        if (action.equals("get_oid")) {
-            try {
-                String oid=request.getParameter("oid");
-                sqlQuery="select count(tid) from issue where ownerid='"+oid+"' AND returned_status=1";
-                rs=stmt.executeQuery(sqlQuery);
-                while(rs.next())
-                {
-                    out.println(rs.getInt(1));
-                }
-            }
-            catch (Exception e) {
-                out.println("Error: "+e.toString());
+                out.println("Error in counting the copies: "+e.toString());
             }
         }
 
         if (action.equals("get_oType")) {
             try {
-                String oid=request.getParameter("oid");
+                Gson gsonObj = new Gson();
+                Map<String, String> inputMap = new HashMap<String, String>();
+                sqlQuery="select cid from user where username='"+session_lms.getAttribute("username")+"'";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                String oid=rs.getString("cid");
                 sqlQuery="select ctype from candidate where cid='"+oid+"'";
                 rs=stmt.executeQuery(sqlQuery);
-                while(rs.next())
-                {
-                    out.println(rs.getString("ctype"));
-                }
+                rs.next();
+                inputMap.put("o_type", rs.getString("ctype"));
+                sqlQuery="select count(tid) from issue where ownerid='"+oid+"' AND returned_status=1";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                inputMap.put("Tcount", rs.getInt(1)+"");
+                // convert map to JSON String
+                String jsonStr = gsonObj.toJson(inputMap);
+                out.println(jsonStr);
             }
             catch (Exception e) {
-                out.println("Error: "+e.toString());
+                out.println("Error get_oType: "+e.toString());
             }
         }
 
         //Event handler to issue a book
         if (action.equals("submit-issue")) {
             try {
-                String ownerid=request.getParameter("owner");
                 String bookname=request.getParameter("bookname");
+                String ownerid;
+                sqlQuery="select cid from user where username='"+session_lms.getAttribute("username")+"'";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                ownerid=rs.getString("cid");
 
                 sqlQuery="select bookid from books where bookname='"+bookname+"'";
                 rs=stmt.executeQuery(sqlQuery);
@@ -296,14 +340,17 @@
                 out.println("Issued BookID: " + rs.getString("copyid"));
 
             } catch (Exception e) {
-                out.println("Error: "+e.toString());
+                out.println("Error submit-issue: "+e.toString());
             }
         }
 
         //Event handler to return a book
         if (action.equals("submit-return")) {
             try {
-                String ownerID=request.getParameter("ownerid_return");
+                sqlQuery="select cid from user where username='"+session_lms.getAttribute("username")+"'";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                String ownerID=rs.getString("cid");
                 String bookid=request.getParameter("bookid_return");
                 sqlQuery="select tid from issue where ownerid='"+ownerID+"' AND bookid='"+bookid+"'";
                 rs=stmt.executeQuery(sqlQuery);
@@ -327,7 +374,7 @@
                 {
                     int day=diff-7;
                     int amount=10*day;
-                    sqlQuery="insert into fine(tid,fine_amount) values('"+tid+"','"+amount+"')";
+                    sqlQuery="insert into fine(tid,ownerid,fine_amount) values('"+tid+"','"+ownerID+"','"+amount+"')";
                     ps=con.prepareStatement(sqlQuery);
                     ps.executeUpdate();
                 }
@@ -342,7 +389,10 @@
         if(action.equals("submit_get_fine"))
         {
             try{
-                String FINEoid=request.getParameter("FINEoid");
+                sqlQuery="select cid from user where username='"+session_lms.getAttribute("username")+"'";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                String FINEoid=rs.getString("cid");
                 String FINEbkid=request.getParameter("FINEbkid");
                 sqlQuery="select tid from issue where ownerid='"+FINEoid+"' AND bookid='"+FINEbkid+"'";
                 rs=stmt.executeQuery(sqlQuery);
@@ -361,7 +411,10 @@
         //Event handler to pay fine for a book
         if (action.equals("submit-fine")) {
             try {
-                String ownerid_fine=request.getParameter("ownerid_fine");
+                sqlQuery="select cid from user where username='"+session_lms.getAttribute("username")+"'";
+                rs=stmt.executeQuery(sqlQuery);
+                rs.next();
+                String ownerid_fine=rs.getString("cid");
                 String bookid_fine=request.getParameter("bookid_fine");
 
                 sqlQuery="select tid from issue where ownerid='"+ownerid_fine+"' AND bookid='"+bookid_fine+"'";

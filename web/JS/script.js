@@ -6,7 +6,7 @@ $(document).ready(function()
         //alert("Registering...");
         
         var ctype = $("input[name='ctype']:checked").val();
-        var username=$("#username").val();
+        var username=$("#username_reg").val();
         var cname=$("#cname").val();
         var password=$("#password").val();
         var deptid=$("#deptid").val();
@@ -18,25 +18,17 @@ $(document).ready(function()
             success:function(data){
                 if(($.trim(data))==="Registered")
                 {
-                    $(location).attr('href',"index.jsp");
+                    alert("Registered");
+                    //$(location).attr('href',"index.jsp");
+                    $("#login").modal("show");
+                    $("#register").modal("hide");
                 }
                 else
                 {
-                    alert("Registration Error: "+data);
-                    $(location).attr('href',"register.jsp");
+                    alert("Registration Error: "+$.trim(data));
                 }
             }
         });
-    });
-    
-    //Event Handler to reset value of username
-    $("#reset_username").on('click',function(){
-        $("#username").val('');
-    });
-    
-    //Event Handler to reset value of password
-    $("#reset_password").on('click',function(){
-        $("#pswd").val('');
     });
     
     //Event Handler to login
@@ -55,12 +47,13 @@ $(document).ready(function()
                 var d="Logged In Successfully";
                 if(($.trim(data))===d)
                 {                
-                    $(location).attr('href',"index.jsp");
+                    alert($.trim(data));
+                    $(location).attr("href","index.jsp");
                 }
                 else
                 {
-                    alert("Login Error!"+data);
-                    $(location).attr('href',"login.jsp");
+                    alert("Invalid Credentials!");
+                    //alert("Login Error! "+data);
                 }
             }      
         });
@@ -74,15 +67,10 @@ $(document).ready(function()
             data:{submit:"submit-logout"},
             success:function(){
                 alert("Logged Out Successfully!");
-                $(location).attr('href',"login.jsp");
+                $(location).attr('href',"index.jsp");
            }
         });        
     });
-    
-    //Redirect to register
-    $("#click-register").on('click',function(){
-        $(location).attr('href',"register.jsp");
-    });    
 
     //Event Handler to retrieve the data select in the combobox(category) at top left
     $(".category").on('change',function(){
@@ -92,8 +80,9 @@ $(document).ready(function()
             url:"server.jsp", 
             method:"post",
             data:{submit:submit,category:category},  
-            success:function(data){  
-                    $('#data').html(data);  
+            success:function(data){
+                console.log(data);
+                $('#data').html(data);
             }
         });
     });
@@ -130,8 +119,9 @@ $(document).ready(function()
     //Book Related Events (Issue)
     $("#bookname_issue").on({
         //Event Handlers to load all the booknames
-        click:function()
+        mouseup:function()
         {
+            console.log("Mouse Released");
             $.ajax({
                 url:"server.jsp",
                 method:"post",
@@ -152,26 +142,26 @@ $(document).ready(function()
                     $("#booklist").html(data);
                 }
             });
-        },
-        //Same as Click Event
-        focus:function(){
-            $("#bookname_issue")
-                .trigger('click')
-                .off("focus");
         }
     });
 
     //Event Handler to get the available quantities of book(Issue)
-    $("#QButton").click(function(){
-        var bkname=$("#bookname_issue").val();
-        $.ajax({
-            url:"server.jsp",
-            method:"post",
-            data:{submit:"get_quantity",bkname:bkname},
-            success:function(data){
-                $("#QLabel").html(data);
-            }
-        });
+    $("#QButton").click(function() {
+        var bkname = $("#bookname_issue").val();
+        if (bkname==="") {
+            alert("Enter Bookname First");
+            $("#bookname_issue").focus();
+        }
+        else {
+            $.ajax({
+                url: "server.jsp",
+                method: "post",
+                data: {submit: "get_quantity", bkname: bkname},
+                success: function (data) {
+                    $("#QLabel").html(data);
+                }
+            });
+        }
     });
 
     //Event Handler to issue new book to any candidate
@@ -185,7 +175,7 @@ $(document).ready(function()
         var oid=$("#ownerid_issue").val();
 
         var count,otype,limit;
-        $.ajax({
+        /*$.ajax({
             url:"server.jsp",
             method:"post",
             data:{submit:"get_oid",oid:oid},
@@ -193,15 +183,18 @@ $(document).ready(function()
                 count=data;
                 //console.log(data);
             }
-        }); //count the transactions of issuing the book
+        }); //count the transactions of issuing the book  */
         var otype="",count=0;
         $.ajax({
             url:"server.jsp",
             method:"post",
             data:{submit:"get_oType",oid:oid},
             success:function(data){
-                otype=$.trim(data);
                 console.log(data);
+                var info=$.parseJSON(data);
+                count=info.Tcount;
+                otype=info.o_type;
+                console.log("Count: "+count+" Otype: "+otype);
             }
         }); //get the limit of issuing the book according to the type of candidate
 
@@ -221,50 +214,48 @@ $(document).ready(function()
         else{
             if(quantity<1)//Check the desired book is in stock or not
             {
+                alert("if");
                 alert("Sorry! This Book is not available, All the Copies of this book are issued to other candidates");
             }
             else
             {
-                var owner=$("#ownerid_issue").val();
                 var bookname=$("#bookname_issue").val();
                 $("bookname_issue").val();
-                if(owner[0]==='T' || owner[0]==='S')//Validate the Owner ID
-                {
-                    $.ajax({
-                        url:"server.jsp",
-                        method:"post",
-                        /*contentType: false,
-                        cache: false,            
-                        processData:false, */
-                        data: {submit:"submit-issue",owner:owner,bookname:bookname},
-                        success:function(data){
-                            alert("Book Issued Successfully, Please Try to return within 7days of issuing to avoid fines");
-                            $("#issue").modal("hide");
-                            $(".category")
-                                .val("issue")
-                                .trigger('change');
-                        }
-                    });
-                }
-                else
-                {
-                    alert("Invalid Owner ID!");
-                }
+                $.ajax({
+                    url:"server.jsp",
+                    method:"post",
+                    /*contentType: false,
+                    cache: false,
+                    processData:false, */
+                    data: {submit:"submit-issue",bookname:bookname},
+                    success:function(data){
+                        alert("Book Issued Successfully, Please Try to return within 7days of issuing to avoid fines");
+                        $("#issue").modal("hide");
+                        $(".category")
+                            .val("issue")
+                            .trigger('change');
+                    }
+                });
             }
         }
-    });	
+    });
+
+    /*$("#").on({
+        keyup:function(){
+
+        }
+    });*/
 
     //Event handler to return the issued book
     $("#submit-return").on('submit',function(event){
         event.preventDefault();
 
-        var ownerid_return=$("#ownerid_return").val();
         var bookid_return=$("#bookid_return").val();
 
         $.ajax({
             url:"server.jsp",
             method:"post",
-            data: {submit:"submit-return",ownerid_return:ownerid_return,bookid_return:bookid_return},
+            data: {submit:"submit-return",bookid_return:bookid_return},
             success:function(data){
                 alert(data);
                 //alert("Book Returned");
@@ -276,30 +267,37 @@ $(document).ready(function()
         });
     });
 
-    $("#FButton").click(function(){
+    $("#FButton").click(function() {
 
-        var FINEoid=$("#ownerid_fine").val();
-        var FINEbkid=$("#bookid_fine").val();
-        $.ajax({
-            url:"server.jsp",
-            method:"post",
-            data:{submit:"submit_get_fine",FINEoid:FINEoid,FINEbkid:FINEbkid},
-            success:function(data){
-                $("#FLabel").html(data);
-            }
-        });
+        var FINEbkid = $("#bookid_fine").val();
+        if(FINEbkid==="")
+        {
+            alert("Book ID cannot be Empty");
+            $("#bookid_fine").focus();
+        }
+        else
+        {
+            $.ajax({
+                url: "server.jsp",
+                method: "post",
+                data: {submit: "submit_get_fine", FINEbkid: FINEbkid},
+                success: function (data) {
+                    $("#FLabel").html(data);
+                }
+            });
+        }
     });
+
     //Event handler to collect fine on any transaction of book
     $("#submit-fine").on('submit',function(event){
         event.preventDefault();
 
-        var ownerid_fine=$("#ownerid_fine").val();
         var bookid_fine=$("#bookid_fine").val();
 
         $.ajax({
             url:"server.jsp",
             method:"post",
-            data: {submit:"submit-fine",ownerid_fine:ownerid_fine,bookid_fine:bookid_fine},
+            data: {submit:"submit-fine",bookid_fine:bookid_fine},
             success:function(data){
                 alert("Fine Collected, Thank You");
                 $("#fine").modal("hide");
@@ -308,24 +306,38 @@ $(document).ready(function()
                     .trigger('change');
             }
         });
-    });	
+    });
 
     //Event Handler to open modals
-    $(".open-book").click(function(){
+    $("#open-book").on('click',function(){
         $("#book").modal("show");
     }); //Add new Books
 
-    $(".open-issue").click(function(){
+    $("#open-issue").on('click',function(){
         $("#issue").modal("show");
     }); //Issue a Book
 
-    $(".open-return").click(function(){
+    $("#open-return").on('click',function(){
         $("#return").modal("show");
-    }); //Return issued Book   
+    }); //Return issued Book
 
-    $(".open-fine").click(function(){
+    $("#open-fine").on('click',function(){
         $("#fine").modal("show");
     }); //Collect fine on late return
+
+    $("#open-login").on('click',function(){
+        $("#login").modal("show");
+    }); //Return issued Book
+
+    $("#open-registration").on('click',function(){
+        $("#register").modal("show");
+    }); //Collect fine on late return
+
+    //Redirect to register
+    $("#click-register").on('click',function(){
+        $("#register").modal("show");
+        $("#login").modal("hide");
+    });
 
     //Event Handler to close modals
     $(".close-fine").click(function(){
